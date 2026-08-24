@@ -3,8 +3,8 @@ import requests as re
 porta = 5000
 base = f"http://127.0.0.1:{porta}"
 
-def busca_produto():
-    url = f"{base}/busca_produto"
+def busca_produto_servico():
+    url = f"{base}/busca_produto_servico"
     
     try:
         response = re.get(url)

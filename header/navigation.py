@@ -16,5 +16,5 @@ def navigation():
             st.switch_page("pages/cliente.py")
 
     with col_nav4:
-        if st.button("Produto", use_container_width=True):
-            st.switch_page("pages/produto.py")
+        if st.button("Produto/Servico", use_container_width=True):
+            st.switch_page("pages/Produto-Servico.py")
