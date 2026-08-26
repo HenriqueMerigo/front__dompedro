@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-
+import time
 
 from header.page_config import page_config
 
@@ -13,7 +13,7 @@ def cliente():
     page_config()
 
     st.title("Clientes")
-    st.write("Esta é a página de clientes.")
+    st.caption("Esta é a página de clientes.")
 
 @st.dialog("Inserir Cliente", width='large')
 def modal_inserir_cliente():
@@ -34,6 +34,7 @@ def modal_inserir_cliente():
             st.error(f"Erro ao inserir cliente: {response.text}")
         else:
             st.success(f"Cliente {nome} inserido com sucesso!")
+            time.sleep(2)
             st.rerun()
 
 @st.dialog("Editar Cliente", width='large')
@@ -58,8 +59,10 @@ def modal_editar_cliente():
             if st.button("Salvar Alterações"):
                 st.warning("Aguarde enquanto as alterações são salvas...")
                 response = edita_cliente(id_cliente, nome, telefone, dh_prim_agenda, dh_ult_agenda)
+                time.sleep(2)
                 if response.status_code != 200:
                     st.error(f"Erro ao editar cliente: {response.text}")
+                    time.sleep(2)
                 else:
                     st.rerun()
 
@@ -91,9 +94,11 @@ def modal_deletar_cliente():
                 if response.status_code == 200:
                     st.session_state["confirmar_delete"] = False
                     st.success("Cliente deletado com sucesso!")
+                    time.sleep(2)
                     st.rerun()
                 else:
                     st.error(f"Erro ao deletar cliente: {response.text}")
+                    time.sleep(2)
 
 if __name__ == "__main__":
     cliente()

@@ -26,6 +26,6 @@ def insere_produto_servico(ds_produto_servico, ds_categoria, qt_estoque, vl_unit
         "vl_unitario_produto_compra": vl_prod_compra_str,
         "vl_unitario_produto_venda": vl_prod_venda_str,
     }
-
+    print(payload)
     response = re.post(url, json=payload)
     return response

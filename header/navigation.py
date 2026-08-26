@@ -6,6 +6,9 @@ def navigation():
     with col_nav1:
         if st.button("Agendamento", use_container_width=True):
             st.switch_page("pages/agendamento.py")
+        elif st.button("Funcionario", use_container_width=True):
+            st.switch_page("pages/funcionario.py")
+                        
 
     with col_nav2:
         if st.button("Financeiro", use_container_width=True):

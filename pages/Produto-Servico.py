@@ -6,28 +6,28 @@ import time
 from header.page_config import page_config
 
 from endpoints.produto_servico.insere_produto_servico import insere_produto_servico
-from endpoints.produto_servico.busca_produto_servico import busca_produto_servico
+from endpoints.produto_servico.busca_produto_servico import busca_produto_servico, busca_produto, busca_servico
 from endpoints.produto_servico.edita_produto_servico import edita_produto_servico
 from endpoints.produto_servico.deleta_produto_servico import deleta_produto_servico
 
 def produto():
     page_config()
 
-    st.title("Produtos")
+    st.title("Produto/Servico")
 
 
 @st.dialog("Inserir Produto Servico", width='large')
 def modal_inserir_produto_servico():
-    st.write("Preencha os dados do novo produto:")
+    st.write("Preencha os dados do novo produto/servico:")
 
     ds_produto_servico = st.text_input("Descricao")
     col_descricao, col_estoque = st.columns(2)
     with col_descricao:
         ds_categoria = st.selectbox("Categoria", ("Produto", "Servico"))
-        vl_unitario_produto_compra = st.number_input("Valor de compra do produto/servico")
+        vl_unitario_produto_compra = st.number_input("Valor de compra:")
     with col_estoque:
         qt_estoque = st.number_input("Quantidade em Estoque", value=0, min_value=0)
-        vl_unitario_produto_venda = st.number_input("Valor de venda do produto/servico")
+        vl_unitario_produto_venda = st.number_input("Valor de venda:")
 
     if st.button("Salvar"):
         response = insere_produto_servico(ds_produto_servico, ds_categoria, qt_estoque, vl_unitario_produto_compra, vl_unitario_produto_venda)
@@ -95,7 +95,6 @@ def modal_deletar_produto_servico():
 
 
 
-
 def modulo_todos():
     col_modulo_1, col_modulo_2, col_modulo_3 = st.columns([1, 1, 1])
     with col_modulo_1:
@@ -110,6 +109,44 @@ def modulo_todos():
         if st.button("Deletar Produto/Servico", width='stretch'):
             modal_deletar_produto_servico()
 
+def modulo():
+    col_modulo_1, col_modulo_2, col_modulo_3 = st.columns([1, 1, 1])
+    with col_modulo_1:
+        if st.button("Inserir Produto/Servico", width='stretch'):
+            modal_inserir_produto_servico()
+
+    with col_modulo_2:
+        if st.button("Editar SerProduto/Servicovico", width='stretch'):
+            modal_editar_produto_servico()
+
+    with col_modulo_3:
+        if st.button("Deletar Produto/Servico", width='stretch'):
+            modal_deletar_produto_servico()
+
+def busca_dados():
+    df = pd.DataFrame(dados)
+
+    colunas_ordem = [
+        "id_produto_servico",
+        "ds_produto_servico",
+        "ds_categoria",
+        "qt_estoque",
+        "vl_unitario_produto_compra",
+        "vl_unitario_produto_venda",
+        "dh_ultima_movimentacao"
+    ]
+    df = df[colunas_ordem]
+
+    df = df.rename(columns={
+        "id_produto_servico": "Código",
+        "ds_produto_servico": "Descricao do Produto/Servico",
+        "ds_categoria": "Categoria",
+        "qt_estoque": "Estoque",
+        "vl_unitario_produto_compra": "Valor de Compra",
+        "vl_unitario_produto_venda": "Valor de Venda",
+        "dh_ultima_movimentacao": "Ultima Venda"
+    })
+    st.dataframe(df, hide_index=True, width="content")
 
 if __name__ == "__main__":
     produto()
@@ -126,31 +163,21 @@ if __name__ == "__main__":
     )
 
     if selection == 0 or selection == None:
-        modulo_todos()
+        modulo()
 
         dados = busca_produto_servico()
         if dados:
-            df = pd.DataFrame(dados)
-    
-            colunas_ordem = [
-                "id_produto_servico",
-                "ds_produto_servico",
-                "ds_categoria",
-                "qt_estoque",
-                "vl_unitario_produto_compra",
-                "vl_unitario_produto_venda",
-                "dh_ultima_movimentacao"
-            ]
-            df = df[colunas_ordem]
-    
-            df = df.rename(columns={
-                "id_produto_servico": "Código",
-                "ds_produto_servico": "Descricao do Produto/Servico",
-                "ds_categoria": "Categoria",
-                "qt_estoque": "Estoque",
-                "vl_unitario_produto_compra": "Valor de Compra",
-                "vl_unitario_produto_venda": "Valor de Venda",
-                "dh_ultima_movimentacao": "Ultima Venda"
-            })
-    
-            st.dataframe(df, hide_index=True, width="content")
+            busca_dados()
+
+    elif selection == 1:
+        modulo()
+
+        dados = busca_servico()
+        if dados:
+            busca_dados()
+    else:
+        modulo()
+
+        dados = busca_produto()
+        if dados:
+            busca_dados()

@@ -7,7 +7,7 @@ def agendamento():
     page_config()
 
     st.title("Financeiro")
-    st.write("Esta é a página de financeiro.")
+    st.caption("Esta é a página de financeiro.")
     
 if __name__ == "__main__":
     agendamento()
