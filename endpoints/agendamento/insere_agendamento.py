@@ -26,3 +26,19 @@ def insere_agendamento(id_cliente, id_funcionario, vl_total_bruto_agendamento, v
     response = re.post(url, json=payload)
     
     return response
+
+def insere_agendamento_produto_servico(id_produto_servico, qt_produto, vl_unitario_produto, vl_total_produto):
+    url = f"{base}/insere_agendamento_produto_servico"
+    
+    payload = {
+        "id_produto_servico" : str(id_produto_servico),
+        "qt_produto" : qt_produto,
+        "vl_unitario_produto" : vl_unitario_produto,
+        "vl_total_produto" : vl_total_produto
+    }
+    if not id_produto_servico:
+        raise ValueError("Os produtos/servicos são obrigatórios e devem ser preenchidos corretamente.")
+    print(payload)
+    response = re.post(url, json=payload)
+    
+    return response

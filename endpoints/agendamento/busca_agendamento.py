@@ -31,3 +31,26 @@ def busca_agendamento():
         print(f"[ERRO JSON]: A rota retornou algo que não é um JSON válido:")
         print(response.text)
         return []
+
+def busca_agendamento_front(dh_agendamento):
+    url = f"{base}/busca_agendamento_front/{dh_agendamento}"
+    
+    try:
+        response = re.get(url)
+        
+        # 200 OK: Retorna a lista com os agendamentos
+        if response.status_code == 200:
+            return response.json()
+            
+        # 404 Not Found: Nenhum agendamento para a data -> Retorna lista vazia
+        elif response.status_code == 404:
+            return []
+            
+        # Erro de Servidor (500, etc.)
+        else:
+            print(f"[ERRO HTTP {response.status_code}]: {response.text}")
+            return None
+            
+    except re.exceptions.RequestException as e:
+        print(f"[ERRO CONEXÃO]: {e}")
+        return None
