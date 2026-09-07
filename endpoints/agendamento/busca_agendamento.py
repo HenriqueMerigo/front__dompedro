@@ -54,3 +54,26 @@ def busca_agendamento_front(dh_agendamento):
     except re.exceptions.RequestException as e:
         print(f"[ERRO CONEXÃO]: {e}")
         return None
+
+def busca_agendamento_detalhes(id_agendamento):
+    url = f"{base}/busca_agendamento_detalhes/{id_agendamento}"
+
+    try:
+        response = re.get(url)
+        
+        # 200 OK: Retorna os detalhes do agendamento
+        if response.status_code == 200:
+            return response.json()
+            
+        # 404 Not Found: Nenhum agendamento encontrado -> Retorna None
+        elif response.status_code == 404:
+            return None
+            
+        # Erro de Servidor (500, etc.)
+        else:
+            print(f"[ERRO HTTP {response.status_code}]: {response.text}")
+            return None
+            
+    except re.exceptions.RequestException as e:
+        print(f"[ERRO CONEXÃO]: {e}")
+        return None

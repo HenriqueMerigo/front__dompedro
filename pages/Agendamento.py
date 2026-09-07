@@ -3,11 +3,19 @@ from datetime import date, datetime
 import time
 import requests
 import streamlit as st
+import uuid
+import pandas as pd
+import random
+import string
 
-from endpoints.agendamento.busca_agendamento import busca_agendamento, busca_agendamento_front
+from endpoints.agendamento.busca_agendamento import busca_agendamento, busca_agendamento_detalhes, busca_agendamento_front
 from endpoints.agendamento.deleta_agendamento import deleta_agendamento
 from endpoints.agendamento.edita_agendamento import edita_agendamento
-from endpoints.agendamento.insere_agendamento import insere_agendamento, insere_agendamento_produto_servico
+from endpoints.agendamento.insere_agendamento import (
+    insere_agendamento,
+    insere_agendamento_produto_servico,
+    remove_estoque_agendamento
+)
 from endpoints.produto_servico.busca_produto_servico import (
     busca_produto,
     busca_servico,
@@ -135,7 +143,7 @@ def modal_inserir_agendamento():
     id_funcionario = funcionario_obj.get('id_funcionario') if isinstance(funcionario_obj, dict) else None
     id_cliente = cliente_obj.get('id_cliente') if isinstance(cliente_obj, dict) else None
 
-    if st.button("Inserir agendamento", use_container_width=True):
+    if st.button("Inserir agendamento", width='stretch'):
         if id_cliente is None or id_funcionario is None:
             st.error("Selecione um Cliente e um Funcionário válidos!")
         elif not st.session_state.itens_selecionados:
@@ -158,7 +166,7 @@ def modal_inserir_agendamento():
                 st.error(f"Erro ao inserir agendamento: {response.text}")
                 time.sleep(2)
             else:
-                # 2. Iteração com tratamento de erro
+                # 2. Iteração para vincular item e dar baixa no estoque
                 sucesso_itens = True
                 for item in st.session_state.itens_selecionados:
                     id_prod_serv = item.get("id_produto_servico")
@@ -172,6 +180,7 @@ def modal_inserir_agendamento():
                     vl_unitario = item.get("Preço Unitário", 0.0)
                     vl_total = vl_unitario * quantidade
 
+                    # Insere o relacionamento agendamento <-> produto/serviço
                     resp_item = insere_agendamento_produto_servico(
                         id_produto_servico=int(id_prod_serv),
                         qt_produto=int(quantidade),
@@ -182,10 +191,23 @@ def modal_inserir_agendamento():
                     if resp_item.status_code != 201:
                         sucesso_itens = False
                         st.error(f"Erro ao vincular item '{item.get('Descrição')}': {resp_item.text}")
+                    else:
+                        resp_estoque = remove_estoque_agendamento(
+                            vl_subtracao=int(quantidade),
+                            id_produto_servico=int(id_prod_serv)
+                        )
 
-                if sucesso_itens:
+                        if resp_estoque.status_code == 400:
+                            sucesso_itens = False
+                            st.error(f"Item nao possui estoque suficiente para '{item.get('Descrição')}'")
+                        elif resp_estoque.status_code != 200:
+                            sucesso_itens = False
+                            st.error(f"Erro ao atualizar estoque do item '{item.get('Descrição')}': {resp_estoque.text}")
+
+                if sucesso_itens == True:
                     st.success("Agendamento e itens inseridos com sucesso!")
                     st.session_state.itens_selecionados = []
+
                     time.sleep(2)
                     st.rerun()
 
@@ -267,9 +289,7 @@ def abrir_modal_data(data):
     if resultado:
         agora = datetime.now()
 
-        # Converte a string de data/hora em datetime para calcular a diferença absoluta de tempo
         def obter_diferenca_tempo(item):
-            # Tenta converter com hora/minuto/segundo ou apenas data se vier truncado
             try:
                 dh_item = datetime.strptime(item["dh_agendamento"], "%Y-%m-%d %H:%M:%S")
             except ValueError:
@@ -277,29 +297,63 @@ def abrir_modal_data(data):
             
             return abs(dh_item - agora)
 
-        # Ordena a lista: do menor intervalo para o maior em relação ao horário atual
         agendamentos_ordenados = sorted(resultado, key=obter_diferenca_tempo)
 
-        # Renderiza um st.metric por agendamento, empilhados verticalmente
         for item in agendamentos_ordenados:
-            # Formatação opcional para exibir a hora no rótulo
+            agendamento_selecionado = item["id_agendamento"]
+            dados = busca_agendamento_detalhes(agendamento_selecionado)
             try:
                 hora_str = datetime.strptime(item["dh_agendamento"], "%Y-%m-%d %H:%M:%S").strftime("%H:%M")
             except ValueError:
                 hora_str = item["dh_agendamento"]
+            if st.button(
+                f"⏰ Horário: {hora_str} | Cliente: {item['ds_cliente']} (Profissional: {item['ds_funcionario']}) — R$ {item['vl_total_liquido_agendamento']:.2f}",
+                key=f"btn_{agendamento_selecionado}_{item.get('id', hora_str)}",
+                width='stretch'
+            ):
+                agendamento_selecionado = item["id_agendamento"]
+                dados = busca_agendamento_detalhes(agendamento_selecionado)
 
-            st.metric(
-                label=f"⏰ Horário: {hora_str} | Cliente: {item['ds_cliente']} (Profissional: {item['ds_funcionario']})",
-                value=f"R$ {item['vl_total_liquido_agendamento']:.2f}",
-                border=True
-            )
-            editar, deletar = st.columns(2)
-            with editar:
-                if st.button(f"Editar agendamento do cliente {item['ds_cliente']} - {hora_str}", width='stretch'):
-                    st.write("nada ainda")
-            with deletar:
-                if st.button(f"Deletar agendamento do cliente {item['ds_cliente']} - {hora_str}", width='stretch'):
-                    st.write("nada ainda")
+                if dados and isinstance(dados, list):
+                    detalhes = dados[0]
+                    
+                    id_agendamento = detalhes.get('id_agendamento', 'N/A')
+                    ds_produto_servico = detalhes.get('ds_produto_servico', 'N/A')
+                    ds_cliente = detalhes.get('ds_cliente', 'N/A')
+                    vl_total_bruto_agendamento = sum(item.get('vl_total_produto', 0) for item in dados)
+                    vl_desconto_agendamento = detalhes.get('vl_desconto_agendamento', 0)
+                    vl_gorjeta_agendamento = detalhes.get('vl_gorjeta_agendamento', 0)
+                    vl_total_liquido_agendamento = vl_total_bruto_agendamento - vl_desconto_agendamento + vl_gorjeta_agendamento
+                                            
+
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        st.write(f"**ID Agendamento:** {id_agendamento}")
+                    with col2:
+                        st.write(f"**Funcionario:** {detalhes.get('ds_funcionario', 'N/A')}")
+                    with col3:
+                        st.write(f"**Cliente:** {ds_cliente}")
+
+                    dados_df = [
+                        {
+                            'Produto': item['ds_produto_servico'],
+                            'Quantidade': item['qt_produto'],
+                            'Valor Unitário': item['vl_unitario_produto'],
+                            'Valor Total': item['vl_total_produto'],
+                        }
+                        for item in dados
+                    ]
+
+                    df = pd.DataFrame(dados_df)
+                    st.dataframe(df, width='stretch', hide_index=True)
+
+                    col4, col5, col6 = st.columns(3)
+                    with col4:
+                        st.write(f"**Desconto:** R$ {detalhes.get('vl_desconto_agendamento', 0):.2f}")
+                    with col5:
+                        st.write(f"**Gorjeta:** R$ {detalhes.get('vl_gorjeta_agendamento', 0):.2f}")
+                    with col6:
+                        st.write(f"**Valor Total do Agendamento:** R$ {vl_total_liquido_agendamento:.2f}")
 
     elif resultado == []:
         st.warning("Nenhum agendamento marcado para esta data.")
@@ -369,21 +423,17 @@ def calendario():
                 else:
                     data_atual_btn = date(ano, mes_num, dia)
                     label_dia = (
-                        f"📆 {dia}" if data_atual_btn == hoje else str(dia)
+                        f"🟢​ {dia}" if data_atual_btn == hoje else str(dia)
                     )
 
                     if st.button(
                         label=label_dia,
                         key=f"btn_data_{ano}_{mes_num}_{dia}",
-                        use_container_width=True,
+                        width='stretch',
                     ):
                         # 2. Ao clicar, atualiza o estado e dispara o modal
                         st.session_state["data_selecionada"] = data_atual_btn
                         abrir_modal_data(data_atual_btn)
-
-    if "data_selecionada" in st.session_state:
-        data_f = st.session_state["data_selecionada"].strftime("%d/%m/%Y")
-        st.success(f"Última data confirmada: **{data_f}**")
 
 def agendamento():
     page_config()

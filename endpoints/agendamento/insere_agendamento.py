@@ -38,7 +38,21 @@ def insere_agendamento_produto_servico(id_produto_servico, qt_produto, vl_unitar
     }
     if not id_produto_servico:
         raise ValueError("Os produtos/servicos são obrigatórios e devem ser preenchidos corretamente.")
-    print(payload)
     response = re.post(url, json=payload)
+    
+    return response
+
+def remove_estoque_agendamento(vl_subtracao, id_produto_servico):
+    url = f"{base}/remove_estoque_agendamento"
+
+    payload = {
+        "vl_subtracao": vl_subtracao,
+        "id_produto_servico": id_produto_servico        
+    }
+
+    if not id_produto_servico or not vl_subtracao:
+        raise ValueError("Os produtos/servicos e o valor de subtracao são obrigatórios e devem ser preenchidos corretamente.")
+    
+    response = re.put(url, json=payload)
     
     return response
